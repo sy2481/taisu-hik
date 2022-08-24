@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nbhy.modules.system.mapper.MenuMapper">
+    <resultMap id="dtoMap" type="com.nbhy.modules.system.domain.dto.MenuSmallDTO">
+        <id column="menu_id" property="id" />
+        <result column="name" property="name" />
+        <result column="parent_node" property="parentNode" />
+        <result column="english_name" property="englishName" />
+        <result column="pid" property="pid" />
+    </resultMap>
+    
+    <select id="findControlMenu" resultMap="dtoMap">
+        SELECT menu_id,`name`,parent_node,english_name,pid
+        FROM sys_menu as m WHERE m.basics = false ORDER BY m.sort ASC
+    </select>
+
+
+    <select id="findMenuSmallDTOByRoleIds" resultMap="dtoMap" parameterType="long">
+        SELECT m.menu_id as menu_id ,m.name as name,parent_node,english_name,pid
+        FROM sys_menu m LEFT JOIN  sys_roles_menus r ON m.menu_id = r.menu_id WHERE r.role_id = #{roleId}
+    </select>
+
+
+    <select id="findByRoleIdsAndIsMenu" parameterType="byte" resultType="string">
+        SELECT m.mark FROM sys_menu m, sys_roles_menus r WHERE
+        m.menu_id = r.menu_id AND r.role_id IN
+        <foreach collection="roleIds" open="(" close=")" item="roleId" separator=",">
+            #{roleId}
+        </foreach>
+        AND `type` = #{type}  ORDER BY m.sort ASC
+    </select>
+
+
+    <select id="queryAllResources" parameterType="byte" resultType="string">
+        SELECT m.mark FROM sys_menu m WHERE
+         `type` = #{type}  ORDER BY m.sort ASC
+    </select>
+
+    <select id="findByBasics" resultType="long">
+        SELECT menu_id FROM sys_menu WHERE  basics = 1
+    </select>
+
+
+
+    <select id="findByRolePermissions" resultType="string">
+        SELECT m.permission FROM sys_menu m, sys_roles_menus r WHERE
+        m.menu_id = r.menu_id AND r.role_id IN
+        <foreach collection="roleIds" open="(" close=")" item="roleId" separator=",">
+            #{roleId}
+        </foreach>
+    </select>
+</mapper>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nbhy.modules.system.mapper.UserMapper">
+
+    <!--  用户表所有的字段  -->
+    <sql id="all_column">
+        user_id,username,nick_name,email,phone,phone,gender,password,enabled,is_admin,pwd_reset_time,create_time
+    </sql>
+
+
+    <resultMap id="user" type="com.nbhy.modules.system.domain.dto.UserDTO">
+        <id column="user_id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="nick_name" property="nickName"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="gender" property="gender"/>
+        <result column="password" property="password"/>
+        <result column="enabled" property="enabled"/>
+        <result column="is_admin" property="isAdmin"/>
+        <result column="pwd_reset_time" property="pwdResetTime"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+
+
+    <resultMap id="userDTO" type="com.nbhy.modules.system.domain.dto.UserDTO">
+        <id column="user_id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="nick_name" property="nickName"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="gender" property="gender"/>
+        <result column="password" property="password"/>
+        <result column="enabled" property="enabled"/>
+        <result column="is_admin" property="isAdmin"/>
+        <result column="pwd_reset_time" property="pwdResetTime"/>
+        <result column="create_time" property="createTime"/>
+        <collection property="roles" ofType="com.nbhy.modules.system.domain.dto.RoleSmallDTO" column="user_id"
+                    select="com.nbhy.modules.system.mapper.RoleMapper.findRoleSmallByUserId">
+        </collection>
+    </resultMap>
+
+
+
+
+    <select id="findByRoleId" parameterType="long" resultType="long">
+           SELECT u.user_id FROM sys_user u, sys_users_roles r WHERE
+            u.user_id = r.user_id AND r.role_id = #{roleId}
+    </select>
+
+
+    <select id="countByRoles" resultType="long">
+        SELECT count(1) FROM sys_user u, sys_users_roles r WHERE
+        u.user_id = r.user_id AND r.role_id in
+        <foreach collection="ids" open="(" close=")" item="roleId" separator=",">
+            #{roleId}
+        </foreach>
+    </select>
+    <select id="findByTest" resultType="com.nbhy.modules.system.domain.entity.User">
+        SELECT * FROM sys_user <where>${ew.sqlSegment}</where>
+    </select>
+
+
+</mapper>
