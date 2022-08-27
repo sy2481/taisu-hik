@@ -701,21 +701,28 @@ public class HikCallbackServiceImpl implements HikCallbackService {
                 return;
             }
             HikPerson hikPerson = hikPersonMapper.selectById(cardDao.getCardNo());
-            if (hikPerson.getPersonType() == HikPersonConstant.INTERNAL_STAFF) {
-                log.info("内部员工卡，无法解绑>>>>{}", extEventCardNo);
+            if(hikPerson!=null){
+                if (hikPerson.getPersonType() == HikPersonConstant.INTERNAL_STAFF) {
+                    log.info("内部员工卡，无法解绑>>>>{}", extEventCardNo);
 //                PlcMessageSocket.sentMessage(equipmentDTO.getSubtitleMachineIp(), "請後臺解綁");
-                PlcMessageSocket.sentMessage("192.168.70.201","請後臺解綁");
+                    PlcMessageSocket.sentMessage("192.168.70.201","請後臺解綁");
 //                plcClient.sendMes(equipmentDTO.getSubtitleMachineIp(),"請後臺解綁");
-                return;
-            }
-
-            //解绑
-            PersonCardUtil.locationCardUnbind(extEventCardNo);
-            hikCardMapper.deleteById(extEventCardNo);
-            log.info("提示用户卡已经解绑");
+                    return;
+                }
+                //解绑
+                PersonCardUtil.locationCardUnbind(extEventCardNo);
+                hikCardMapper.deleteById(extEventCardNo);
+                log.info("提示用户卡已经解绑>>>{}",extEventCardNo);
 //            PlcMessageSocket.sentMessage(equipmentDTO.getSubtitleMachineIp(), "已解綁");
-            PlcMessageSocket.sentMessage("192.168.70.201", hikPerson.getPersonName()+"解綁");
-//            plcClient.sendMes(equipmentDTO.getSubtitleMachineIp(),"已解綁");
+                PlcMessageSocket.sentMessage("192.168.70.201", hikPerson.getPersonName()+"解綁");
+//                plcClient.sendMes(equipmentDTO.getSubtitleMachineIp(),"已解綁");
+            }else {
+                //第二天未核卡 來做解綁操作
+                PersonCardUtil.locationCardUnbind(extEventCardNo);
+                hikCardMapper.deleteById(extEventCardNo);
+                log.info("提示用户卡已经解绑>>>{}",extEventCardNo);
+                PlcMessageSocket.sentMessage("192.168.70.201", "解綁成功");
+            }
         } else {
             String personId = (String) redisUtils.get(RedisConstant.MANUFACTURER_BOUND_POSITIONING_CARD_KEY + equipmentDTO.getIndexCode());
             if (StringUtils.isEmpty(personId)) {
