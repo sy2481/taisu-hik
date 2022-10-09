@@ -40,12 +40,12 @@ public class EventSubscriptionByEventTypes {
          * STEP5：组装请求参数
          */
         JSONObject jsonBody = new JSONObject();
-        int[] arr = new int[]{261952,197634,196893};
-        jsonBody.put("eventTypes", arr);
-        jsonBody.put("eventDest", "http://192.168.10.44:11190/hik/event/door/callback");
-//        int[] arr2=new  int[]{771760133,771760130};
-//        jsonBody.put("eventTypes", arr2);
-//        jsonBody.put("eventDest","http://192.168.10.44:11190/hik/event/car/callback");
+//        int[] arr = new int[]{261952,197634,196893};
+//        jsonBody.put("eventTypes", arr);
+//        jsonBody.put("eventDest", "http://192.168.10.44:11160/hik/event/door/callback");
+        int[] arr2=new  int[]{771760133,771760130};
+        jsonBody.put("eventTypes", arr2);
+        jsonBody.put("eventDest","http://192.168.10.44:11160/hik/event/car/callback");
         String body = jsonBody.toJSONString();
         /**
          * STEP6：调用接口

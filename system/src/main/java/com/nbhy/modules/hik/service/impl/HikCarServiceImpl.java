@@ -5,11 +5,13 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nbhy.exception.BadRequestException;
 import com.nbhy.modules.hik.constant.CarAuthConstant;
 import com.nbhy.modules.hik.constant.CarConstant;
+import com.nbhy.modules.hik.constant.CardConstant;
 import com.nbhy.modules.hik.constant.HikDeviceConstant;
 import com.nbhy.modules.hik.domain.dto.HEEmpDto;
 import com.nbhy.modules.hik.domain.dto.HikCar;
@@ -31,9 +33,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -182,6 +182,62 @@ public class HikCarServiceImpl implements HikCarService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void bindCarCardOneCardToManyPerson(CarCardVO carCardVO) {
+        if(hikCardMapper.selectOne(Wrappers.<Card>lambdaQuery()
+                .select(Card::getCardNumber)
+                .eq(Card::getCardNumber,carCardVO.getCardNumber())
+                //++
+                .eq(Card::getCardNo, carCardVO.getCardNo())
+        ) != null){
+//            throw new BadRequestException("车卡已经绑定，无法重新绑定");
+            log.error(carCardVO.getCardNumber()+" : 车卡已经绑定，无法重新绑定");
+            return;
+        }
+
+        Card card = new Card();
+        BeanUtil.copyProperties(carCardVO,card);
+
+        hikCardMapper.insert(card);
+
+        Collection<String> deviceIds = null;
+        if (carCardVO.getCardType() == CardConstant.MANUFACTURER_S_CARD) {
+
+            //如果是下发全部权限
+            if (carCardVO.getAuthIsAll() != null && carCardVO.getAuthIsAll()) {
+//            deviceIds = (List<String>)( Object)hikDeviceMapper.selectObjs(Wrappers.<HikDevice>lambdaQuery()
+//                    .select(HikDevice::getIndexCode)
+//                    .eq(HikDevice::getDeviceType, HikDeviceConstant.CAR_DEVICE));
+                deviceIds = hikEquipmentService.queryAll(HikDeviceConstant.CAR_DEVICE).stream()
+                        .map(HikDeviceDTO::getIndexCode)
+                        .collect(Collectors.toList());
+            }else{
+                deviceIds = carCardVO.getDeviceNos();
+            }
+
+            if(CollectionUtil.isEmpty(deviceIds)){
+                //如果没有下发的权限，直接退出
+                return;
+            }
+
+            //防止重复转set
+            Set<String> authDeviceCodes = deviceIds.stream().collect(Collectors.toSet());
+
+
+            List<HikCarAuth> hikCarAuths = authDeviceCodes.stream().map(authDeviceCode -> {
+                HikCarAuth hikCarAuth = new HikCarAuth();
+                hikCarAuth.setDeviceId(authDeviceCode);
+                hikCarAuth.setCarId(carCardVO.getCardNumber());
+                hikCarAuth.setCarType(CarAuthConstant.CAR_CARD);
+                return hikCarAuth;
+            }).collect(Collectors.toList());
+
+            hikCarAuthService.saveBatch(hikCarAuths);
+        }
+    }
+
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void untieCard(CarCardUntieVO carVO) {
         Card card = hikCardMapper.selectById(carVO.getCardNumber());
         if(card == null){
@@ -190,6 +246,32 @@ public class HikCarServiceImpl implements HikCarService {
 
         hikCardMapper.deleteById(card.getCardNumber());
 
+        hikCarAuthMapper.delete(Wrappers.<HikCarAuth>lambdaUpdate()
+                .eq(HikCarAuth::getCarId, carVO.getCardNumber())
+                .eq(HikCarAuth::getCarType, CarAuthConstant.CAR_CARD));
+    }
+
+
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void untieCardOneCardToManyPerson(CarCardUntieVO carVO) {
+//        Card card = hikCardMapper.selectById(carVO.getCardNumber());
+        System.out.println("carVO = " + carVO);
+        QueryWrapper<Card> query = new QueryWrapper<>();
+        query.eq("card_number",carVO.getCardNumber());
+        query.eq("card_no",carVO.getCardNo());
+        query.eq("card_type",carVO.getCardType());
+        Card card = hikCardMapper.selectOne(query);
+        if (card == null) {
+            throw new BadRequestException("车卡不存在");
+        }
+
+//        hikCardMapper.deleteById(card.getCardNumber());
+        Map<String,Object> cardMap = new HashMap<>();
+        cardMap.put("card_number",carVO.getCardNumber());
+        cardMap.put("card_no",carVO.getCardNo());
+        hikCardMapper.deleteByMap(cardMap);
         hikCarAuthMapper.delete(Wrappers.<HikCarAuth>lambdaUpdate()
                 .eq(HikCarAuth::getCarId, carVO.getCardNumber())
                 .eq(HikCarAuth::getCarType, CarAuthConstant.CAR_CARD));

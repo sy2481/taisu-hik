@@ -271,6 +271,9 @@ public class PlcMessageSocket {
 
 
 	public static void sentMessage(String ip,String message){
+		if (ip != null && (ip.equals("") || (ip.equals("127.0.0.1")))) {
+			return;
+		}
 		PlcMessageSocket plc=new PlcMessageSocket(ip,6000,0,CODE_TYPE.HEX.name());
 		plc.sendCommLine();
 //		String message="中文 english";

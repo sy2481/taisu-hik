@@ -45,12 +45,33 @@ public class HikCarController {
     }
 
 
+//    @PostMapping("/bind/card")
+//    @ApiOperation("绑定车卡")
+//    @AnonymousAccess
+//    @Log(value = "绑定车卡")
+//    public CommonResult bindCarCard(@RequestBody @Validated CarCardVO carCardVO){
+//        hikCarService.bindCarCard(carCardVO);
+//        return  CommonResult.success(null,"绑定车卡成功");
+//    }
+//
+//
+//
+//    @PostMapping("/untie/card")
+//    @ApiOperation("解绑车卡")
+//    @AnonymousAccess
+//    @Log(value = "解绑车卡")
+//    public CommonResult untieCard(@RequestBody @Validated CarCardUntieVO carVO){
+//        hikCarService.untieCard(carVO);
+//        return  CommonResult.success(null,"解绑车卡成功");
+//    }
+
     @PostMapping("/bind/card")
     @ApiOperation("绑定车卡")
     @AnonymousAccess
     @Log(value = "绑定车卡")
     public CommonResult bindCarCard(@RequestBody @Validated CarCardVO carCardVO){
-        hikCarService.bindCarCard(carCardVO);
+//        hikCarService.bindCarCard(carCardVO);
+        hikCarService.bindCarCardOneCardToManyPerson(carCardVO);
         return  CommonResult.success(null,"绑定车卡成功");
     }
 
@@ -61,7 +82,8 @@ public class HikCarController {
     @AnonymousAccess
     @Log(value = "解绑车卡")
     public CommonResult untieCard(@RequestBody @Validated CarCardUntieVO carVO){
-        hikCarService.untieCard(carVO);
+//        hikCarService.untieCard(carVO);
+        hikCarService.untieCardOneCardToManyPerson(carVO);
         return  CommonResult.success(null,"解绑车卡成功");
     }
 

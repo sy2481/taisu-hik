@@ -32,11 +32,14 @@ public interface HikCarService {
      */
     void bindCarCard(CarCardVO carCardVO);
 
+    void bindCarCardOneCardToManyPerson(CarCardVO carCardVO);
 
     /**
      * 解绑车卡
      * @param carVO
      */
     void untieCard(CarCardUntieVO carVO);
+
+    void untieCardOneCardToManyPerson(CarCardUntieVO carVO);
 
 }

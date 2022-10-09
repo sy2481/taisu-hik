@@ -177,6 +177,8 @@ public class HikPersonServiceImpl implements HikPersonService {
         HaiKangTaskUtil.downloadTask(taskId);
         hikPersonAuthService.saveBatch(hikPersonAuths);
     }
+
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createPersonOnlyFace(PersonVO personVO) {
@@ -186,7 +188,9 @@ public class HikPersonServiceImpl implements HikPersonService {
         if(hikPersonMapper.selectOne(Wrappers.<HikPerson>lambdaQuery()
                 .select(HikPerson::getPersonId)
                 .eq(HikPerson::getPersonId,personVO.getPersonId())) != null){
-            throw new BadRequestException("人员唯一标识已存在");
+            log.info("人员唯一标识已存在");
+            return;
+
         }
 
         //从海康获取人员信息
@@ -421,7 +425,7 @@ public class HikPersonServiceImpl implements HikPersonService {
 
         try {
             //删除海康人员
-            //HiKUserUtil.delete(new String[]{personId});
+//            HiKUserUtil.delete(new String[]{personId});
             if(CollectionUtil.isEmpty(hikPersonAuths)){
                 return;
             }
@@ -545,16 +549,16 @@ public class HikPersonServiceImpl implements HikPersonService {
     @Override
     public void bindCard(CardBindVO cardBindVO) {
         Card card = hikCardMapper.selectById(cardBindVO.getCardNumber());
-        if(card != null){
+        if (card != null) {
             throw new BadRequestException("卡号已经被绑定，无法重新绑定");
         }
 
-        if(hikCardMapper.existCarSnAndCarType(cardBindVO.getPersonId(),CardConstant.LOCATION_CARD)){
+        if (hikCardMapper.existCarSnAndCarType(cardBindVO.getPersonId(), CardConstant.LOCATION_CARD)) {
             throw new BadRequestException("人员已经有定位卡，无法进行绑定");
         }
 
         HikPerson hikPerson = hikPersonMapper.selectById(cardBindVO.getPersonId());
-        if(hikPerson == null){
+        if (hikPerson == null) {
             throw new BadRequestException("需要绑定的人员不存在");
         }
         card = new Card();
@@ -856,7 +860,7 @@ public class HikPersonServiceImpl implements HikPersonService {
             log.info("isc圖片不存在");
             return;
         }else {
-            JSONObject face1 = HiKUserUtil.updateFace(faceVO.getFace(), faceVO.getFace());
+            JSONObject face1 = HiKUserUtil.updateFace(faceVO.getPersonId(), faceVO.getFace());
 
         hikPersonMapper.update(null,Wrappers.<HikPerson>lambdaUpdate()
                 .eq(HikPerson::getPersonId,faceVO.getPersonId()).set(HikPerson::getFaceId,face1.getString("faceId")));

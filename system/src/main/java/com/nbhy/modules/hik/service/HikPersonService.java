@@ -3,6 +3,8 @@ package com.nbhy.modules.hik.service;
 import com.nbhy.modules.hik.domain.vo.*;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.util.List;
+
 /**
  * @Author: xcjx
  * @Email: nizhaobudaowo@163.com

@@ -57,8 +57,8 @@ public class PlcSocket {
     private Socket socket = null;
 
     OutputStream os = null;
-    OutputStreamWriter opsw=null;
-    BufferedWriter bw=null;
+    OutputStreamWriter opsw = null;
+    BufferedWriter bw = null;
     InputStream inputStream = null;
 
     /**
@@ -76,29 +76,31 @@ public class PlcSocket {
             socket = new Socket(ip, port);
             socket.setKeepAlive(true);
         } catch (Exception e) {
-            logger.error("socket连接失败", ip+"--->"+port);
+            logger.error("socket连接失败", ip + "--->" + port);
         }
 
     }
 
-    public synchronized void close(){
+    public synchronized void close() {
         logger.info("socket close start");
         try {
 
-            if(os!=null){
+            if (os != null) {
                 os.close();
-            }if(opsw!=null){
+            }
+            if (opsw != null) {
                 opsw.close();
             }
-            if(bw!=null){
+            if (bw != null) {
                 bw.close();
-            }if(inputStream!=null){
+            }
+            if (inputStream != null) {
                 inputStream.close();
             }
-            if(socket!=null){
+            if (socket != null) {
                 socket.close();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
 
         }
         logger.info("socket close end");
@@ -106,22 +108,22 @@ public class PlcSocket {
 
     public synchronized String sendComm(String command) {
 
-        logger.info("start send message "+command);
+        logger.info("start send message " + command);
 
         if (socket == null) {
 //            int i = 0;
 //            while (socket == null && i < 3) {
-                try {
-                    socket = new Socket(ip, port);
-                    socket.setKeepAlive(true);
-                } catch (IOException e) {
-                    logger.error("socket连接失败", ip+"--->"+port);
-                }
-                try {
-                    sleep(DEFAULT_RANGE_FOR_SLEEP);
-                } catch (InterruptedException e) {
-                    logger.error("系统内部错误", e);
-                }
+            try {
+                socket = new Socket(ip, port);
+                socket.setKeepAlive(true);
+            } catch (IOException e) {
+                logger.error("socket连接失败", ip + "--->" + port);
+            }
+            try {
+                sleep(DEFAULT_RANGE_FOR_SLEEP);
+            } catch (InterruptedException e) {
+                logger.error("系统内部错误", e);
+            }
 //                i++;
 //            }
         }
@@ -212,14 +214,17 @@ public class PlcSocket {
     }
 
 
-    public static void sentMessage(String ip,String index){
-        if(!index.equals("")) {
+    public static void sentMessage(String ip, String index) {
+        if (ip != null && (ip.equals("") || (ip.equals("127.0.0.1")))) {
+            return;
+        }
+        if (!index.equals("")) {
             PlcSocket plc = new PlcSocket(ip, 6000, 0, PlcSocket.CODE_TYPE.HEX.name());
             // byte[] bytes = CrcUtils.hexStringToByte(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
             plc.sendComm(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
 //        plc.sendComm("02FF0A0000000000204D010000");
             try {
-                Thread.sleep(100);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -227,14 +232,14 @@ public class PlcSocket {
             //byte[] bytes1 = CrcUtils.hexStringToByte(String.format(PlcCommandConstant.OPEN_DOOR_COMMAND, index));
             plc.sendComm(String.format(PlcCommandConstant.OPEN_DOOR_COMMAND, index));
             try {
-                Thread.sleep(100);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 //        plc.sendComm("02FF0A0000000000204D010000");
             plc.sendComm(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
             try {
-                Thread.sleep(100);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -244,16 +249,14 @@ public class PlcSocket {
     }
 
 
-
-
     public static void main(String[] args) {
-        PlcSocket plc=new PlcSocket("192.168.1.202",4000,0,CODE_TYPE.HEX.name());
+        PlcSocket plc = new PlcSocket("192.168.1.202", 4000, 0, CODE_TYPE.HEX.name());
         System.out.println(plc.sendComm("03FF0A0000000000204D01000000"));
 
         System.out.println(plc.sendComm("03FF0A0000000000204D01000100"));
         try {
             Thread.sleep(5000);
-        }catch (Exception e){
+        } catch (Exception e) {
 
         }
         System.out.println(plc.sendComm("03FF0A0000000000204D01000000"));

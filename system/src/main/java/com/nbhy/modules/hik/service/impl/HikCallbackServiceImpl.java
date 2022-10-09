@@ -1,5 +1,7 @@
 package com.nbhy.modules.hik.service.impl;
 
+import cn.hutool.core.collection.CollectionUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.nbhy.modules.erp.config.LogConstant;
 import com.nbhy.modules.erp.domain.InAndOutLog;
@@ -37,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -323,14 +326,14 @@ public class HikCallbackServiceImpl implements HikCallbackService {
             Car car = hikCarMapper.selectById(carNumber);
             if (car == null) {
                 log.info("車牌不存在{}", carNumber);
-                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(deviceId, "車牌不存在");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(deviceId, carNumber+" 此車牌不存在 ");
                 continue;
             }
 
             log.info("您沒有進出此門崗的權限{}", carNumber.substring(1));
             if (!hikCarAuthMapper.existCarIdAndDeviceIdAndCarType(carNumber.substring(1), CarAuthConstant.CAR_NUMBER, equipmentDTO.getIndexCode())) {
                 log.info("您沒有進出此門崗的權限{}", carNumber);
-                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(deviceId, "您沒有進出此門崗的權限");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(deviceId, carNumber+" 您沒有進出此門崗的權限");
                 continue;
             }
 
@@ -386,11 +389,18 @@ public class HikCallbackServiceImpl implements HikCallbackService {
                 }
                 return;
             }
+            List<String> carSnlist = new ArrayList<>();
+            String carSn = car.getCarSn();
+            carSnlist.add(carSn);
 //            设置车辆唯一值
-            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getBindIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN, car.getCarSn());
+            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getBindIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN, carSnlist);
+
+
+//            设置车辆唯一值
+//            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getBindIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN, car.getCarSn());
 //            设置过期时间
             redisUtils.expire(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getBindIndexCode(), RedisConstant.IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD, TimeUnit.SECONDS);
-            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請刷人臉");
+            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "車牌號碼: "+carNumber+" 請下車刷人臉");
 
         }
     }
@@ -414,7 +424,8 @@ public class HikCallbackServiceImpl implements HikCallbackService {
                 break;
             }
             case HikDeviceConstant.LANE_BOUND_FACE_DEVICE:
-                drivewayBrushFace(event, equipmentDTO);
+//                drivewayBrushFace(event, equipmentDTO);
+                drivewayBrushFaceOneCardToManyPerson(event,equipmentDTO);
                 break;
             default:
                 log.error("不存在的设备属性");
@@ -440,7 +451,8 @@ public class HikCallbackServiceImpl implements HikCallbackService {
             }
 
             case HikDeviceConstant.LANE_BOUND_FACE_DEVICE: {
-                drivewaySwipe(event, equipmentDTO);
+//                drivewaySwipe(event, equipmentDTO);
+                drivewaySwipeOneCardToManyPerson(event,equipmentDTO);
                 break;
             }
             default:
@@ -855,7 +867,7 @@ public class HikCallbackServiceImpl implements HikCallbackService {
 //                            drivewayOpen(carEquipmentDTO,event.getData().getExtEventPersonNo(),null);
 //
 //                            //清除缓存
-//                            redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode());
+//                     carSn.contains       redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode());
 //                        }else{
                 String carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR);
                 CarPerilousVO carPerilousVO = new CarPerilousVO();
@@ -890,6 +902,182 @@ public class HikCallbackServiceImpl implements HikCallbackService {
         }
     }
 //    }
+
+    /**
+     * 车道刷脸 一卡多人绑定
+     *
+     * @param event        事件数据
+     * @param equipmentDTO 时间发生的设备
+     */
+    private void drivewayBrushFaceOneCardToManyPerson(Events<EventData> event, EquipmentDTO equipmentDTO) {
+        log.info("car-------11111111");
+
+        //先延长事件
+        redisUtils.expire(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD, TimeUnit.SECONDS);
+        Integer personType = (Integer) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_PERSON_TYPE);
+        log.info("RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode()+++  " + RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+        log.info("personType  " + personType);
+
+        //如果没有值，代表车牌或者车卡还没有刷
+        if (personType == null) {
+            log.info("字母机提示先刷车卡或者车牌");
+            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請先刷車卡或者車牌");
+            return;
+        }
+        //获取事件的人员
+        String personNo = event.getData().getExtEventPersonNo();
+        //如果是内部员工
+        if (HikPersonConstant.INTERNAL_STAFF == personType) {
+            //获取缓存中的所有权限人员
+            List<String> carSn = (List<String>) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN);
+            //如果车牌的所有者和当前刷脸的人一致
+            if (carSn.contains(personNo)) {
+                if (sysConfigService.getConfig().getLocationCardEnabled()) {
+                    log.info("字幕机提示请刷定位卡");
+                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請刷定位卡");
+                    redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_FACE, event.getData().getExtEventPersonNo());
+                } else {
+                    //不启用定位卡直接开门
+                    //获取人脸设备绑定的车辆设备
+                    EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+                    drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(), null);
+
+//                    String carNoCard = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                    String carNoCar = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//
+//                    String returnCarNo = null;
+//                    if (!StringUtils.isEmpty(carNoCard)){
+//                        returnCarNo = carNoCard;
+//                    }else {
+//                        returnCarNo = carNoCar;
+//                    }
+//                    Card card = new Card();
+//                    card.setCardNo(returnCarNo);
+//                    drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(),card);
+
+                    //清除缓存
+                    redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+
+
+//                    String carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//                    if(StringUtils.isEmpty(carNo)){
+//                        carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                    }
+//                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(),carNo+ (carEquipmentDTO.getSign() == HikDeviceConstant.ENTER_THE_DOOR ? "入" : "出"));
+
+                }
+
+            } else {
+                log.info("字母机提示车牌和人不对应");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "車牌與人臉不對應");
+            }
+        } else if (HikPersonConstant.VENDOR_EMPLOYEES == personType) {
+            HikPerson hikPerson = hikPersonMapper.selectById(event.getData().getExtEventPersonNo());
+            //比对厂商员工的工单号和车牌的工单号是否一致
+            List<String> carSn = (List<String>) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN);
+            //如果车牌的所有者和当前刷脸的人一致
+            if (carSn.contains(hikPerson.getOrderSn())) {
+                if (sysConfigService.getConfig().getLocationCardEnabled()) {
+                    log.info("字幕机提示请刷定位卡");
+                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請刷定位卡");
+                    redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_FACE, event.getData().getExtEventPersonNo());
+                } else {
+                    if (hikPerson.getOrderSn().startsWith("1")) {
+                        //不启用定位卡直接开门
+                        //获取人脸设备绑定的车辆设备
+                        EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+                        drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(), null);
+
+                        //清除缓存
+                        redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+                    } else {
+                        String errorMsg = ManufacturerUtil.isItPossibleToGetInAndOut(HikDeviceConstant.IN_OR_OUT_IDENTIFICATION.get(equipmentDTO.getSign()), hikPerson.getPersonId());
+                        log.info("errorMsg---->"+errorMsg);
+                        if (StringUtils.isEmpty(errorMsg)) {
+                            //不启用定位卡直接开门
+                            //获取人脸设备绑定的车辆设备
+                            EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+                            drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(), null);
+
+
+//                            String carNoCard = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                            String carNoCar = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//
+//                            String returnCarNo = null;
+//                            if (!StringUtils.isEmpty(carNoCard)){
+//                                returnCarNo = carNoCard;
+//                            }else {
+//                                returnCarNo = carNoCar;
+//                            }
+//                            Card card = new Card();
+//                            card.setCardNo(returnCarNo);
+//                            drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(),card);
+
+                            //清除缓存
+                            redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+
+//                        String carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//                        if(StringUtils.isEmpty(carNo)){
+//                            carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                        }
+//                        HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(),carNo+ (carEquipmentDTO.getSign() == HikDeviceConstant.ENTER_THE_DOOR ? "入" : "出"));
+                        } else {
+                            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), errorMsg);
+                        }
+                    }
+                }
+            }
+        } else if (HikPersonConstant.PERILOUS_EMPLOYEES == personType) {
+            HikPerson hikPerson = hikPersonMapper.selectById(event.getData().getExtEventPersonNo());
+            //比对厂商员工的工单号和车牌的工单号是否一致
+//                if(hikPerson.getOrderSn().equals(redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_SN))){
+            if (sysConfigService.getConfig().getLocationCardEnabled()) {
+                log.info("字幕机提示请刷定位卡");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請刷定位卡");
+                redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_FACE, event.getData().getExtEventPersonNo());
+            } else {
+//                        if(hikPerson.getOrderSn().startsWith("1")){
+//                            //不启用定位卡直接开门
+//                            //获取人脸设备绑定的车辆设备
+//                            EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+//                            drivewayOpen(carEquipmentDTO,event.getData().getExtEventPersonNo(),null);
+//
+//                            //清除缓存
+//                            redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode());
+//                        }else{
+                String carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR);
+                CarPerilousVO carPerilousVO = new CarPerilousVO();
+                carPerilousVO.setCarNo(carNo);
+                carPerilousVO.setInOutType(equipmentDTO.getSign());
+                carPerilousVO.setIp(equipmentDTO.getIp());
+                carPerilousVO.setCheckingType(equipmentDTO.getControlJSONBo().getDanger());
+                carPerilousVO.setIdCard(hikPerson.getPersonId());
+                String errorMsg = HazardousChemicalsUtil.carExists(carPerilousVO);
+                if (StringUtils.isEmpty(errorMsg)) {
+                    //不启用定位卡直接开门
+                    //获取人脸设备绑定的车辆设备
+                    EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+                    drivewayOpen(carEquipmentDTO, event.getData().getExtEventPersonNo(), null);
+
+                    //清除缓存
+                    redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+
+//                        String carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//                        if(StringUtils.isEmpty(carNo)){
+//                            carNo = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                        }
+//                        HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(),carNo+ (carEquipmentDTO.getSign() == HikDeviceConstant.ENTER_THE_DOOR ? "入" : "出"));
+                } else {
+                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), errorMsg);
+                }
+//                        }
+            }
+        } else {
+            log.info("字母机提示车牌和人不对应");
+            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "車牌與人臉不對應");
+        }
+    }
+
 
 
     /**
@@ -999,6 +1187,131 @@ public class HikCallbackServiceImpl implements HikCallbackService {
     }
 
 
+
+
+    /**
+     * 车道刷卡 一卡对多人
+     *
+     * @param event        事件数据
+     * @param equipmentDTO 时间发生的设备
+     */
+    private void drivewaySwipeOneCardToManyPerson(Events<EventData> event, EquipmentDTO equipmentDTO) {
+        QueryWrapper<Card> query = new QueryWrapper<>();
+        query.eq("card_number", event.getData().getExtEventCardNo());
+        List<Card> cards = hikCardMapper.selectList(query);
+        if (CollectionUtil.isEmpty(cards)) {
+            log.info("字幕机提示卡号不存在");
+            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "卡號不存在");
+            return;
+        }
+
+
+        //定位卡或外部车卡
+        Card card = cards.get(0);
+        //
+        List<String> carSnlist = new ArrayList<>();
+        for (Card card1 : cards) {
+            carSnlist.add(card1.getCardNo());
+        }
+        //如果是定位卡
+        if (CardConstant.LOCATION_CARD == card.getCardType()) {
+            redisUtils.expire(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD, TimeUnit.SECONDS);
+            Integer personType = (Integer) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_PERSON_TYPE);
+            //如果没有值，代表车牌或者车卡还没有刷
+            if (personType == null) {
+                log.info("字母机提示先刷车卡或者车牌");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請先刷車卡或者車牌");
+                return;
+            }
+            String personId = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_FACE);
+            if (StringUtils.isEmpty(personId)) {
+                log.info("字幕机提示先刷人脸");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "先刷人臉");
+                return;
+            }
+
+            //查看定位卡是否属于该用户
+            if (Objects.equals(card.getCardNo(), personId)) {
+                String errorMsg = null;
+
+                if (HikPersonConstant.VENDOR_EMPLOYEES == personType) {
+                    if (!(CardConstant.MANUFACTURER_S_CARD == card.getCardType() && card.getCardNo().startsWith("1"))) {
+                        errorMsg = ManufacturerUtil.isItPossibleToGetInAndOut(HikDeviceConstant.IN_OR_OUT_IDENTIFICATION.get(equipmentDTO.getSign()), personId);
+                    }
+                }
+                //如果是厂商员工需要多一层校验
+                if (HikPersonConstant.INTERNAL_STAFF == personType || errorMsg == null) {
+                    log.info("校验通过，开启车辆道闸");
+//                    //发送日志
+//                    String carNumber = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR);
+//                    if(StringUtils.isEmpty(carNumber)){
+//                        carNumber = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY+equipmentDTO.getIndexCode(),RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+//                    }
+
+                    //获取人脸设备绑定的车辆设备
+                    EquipmentDTO carEquipmentDTO = hikEquipmentService.getEquipments().get(equipmentDTO.getBindIndexCode());
+//                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(),carNumber+ (carEquipmentDTO.getSign() == HikDeviceConstant.ENTER_THE_DOOR ? "入" : "出"));
+
+
+                    drivewayOpen(carEquipmentDTO, personId, card);
+//                    if(plcClient.hasChannelFuture(carEquipmentDTO.getPlcIp())){
+//                        plcClient.humaneDoor(carEquipmentDTO.getPlcIp(),carEquipmentDTO.getPlcCommand());
+//                    }else{
+//                        log.info("该设备没有绑定plc>>>>>>>{}",carEquipmentDTO.getIndexCode());
+//                    }
+//
+//                    LogUtil.sendLog(new InAndOutLog(personId,card.getCardNumber(),carEquipmentDTO.getIp(),
+//                            LogConstant.DEVICE_TO_LOG_PASS_IN_AND_OUT.get(carEquipmentDTO.getSign()),carNumber));
+                } else {
+                    log.info("字幕机提示,看服务端返回的信息，提示为什么不能开启道闸");
+                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), errorMsg);
+                }
+                //清除缓存
+                redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+            } else {
+                log.info("字幕机提示车辆和他没有关系");
+                HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "人員和定位卡不匹配");
+            }
+
+        } else if (CardConstant.INTERNAL_TRUCK == card.getCardType() || CardConstant.MANUFACTURER_S_CARD == card.getCardType()) {
+            // ++ 内部车卡不用判断
+            if (CardConstant.MANUFACTURER_S_CARD == card.getCardType()) {
+                //如果是外部车卡
+                if (!hikCarAuthMapper.existCarIdAndDeviceIdAndCarType(event.getData().getExtEventCardNo(), CarAuthConstant.CAR_CARD, equipmentDTO.getBindIndexCode())) {
+                    log.info("提示车辆没有权限");
+                    HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "車輛沒有權限");
+                    return;
+                }
+            }
+            String carCardCache = (String) redisUtils.hget(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_CARD);
+            //如果发现扫描的车牌和缓存一致，不做处理
+            if (StringUtils.isNotEmpty(carCardCache) && carCardCache.equals(event.getData().getExtEventCardNo())) {
+                return;
+            }
+
+            //清除之前的缓存
+            redisUtils.del(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode());
+            //设置车卡
+            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_CARD, card.getCardNumber());
+
+            //如果是内部员工
+            if (CardConstant.INTERNAL_TRUCK == card.getCardType()) {
+                redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_PERSON_TYPE, HikPersonConstant.INTERNAL_STAFF);
+            } else {
+                redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_PERSON_TYPE, HikPersonConstant.VENDOR_EMPLOYEES);
+            }
+//            //设置车辆唯一值
+//            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN, card.getCardNo());
+            //设置车辆绑定的身份值
+            redisUtils.hset(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_KEY_CAR_SN, carSnlist);
+            //设置过期时间
+            redisUtils.expire(RedisConstant.IN_AND_OUT_CAR_KEY + equipmentDTO.getIndexCode(), RedisConstant.IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD, TimeUnit.SECONDS);
+            log.info("字幕机提示下车刷人脸");
+            HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), "請刷人臉");
+        }
+    }
+
+
     /**
      * 人道开门
      *
@@ -1058,8 +1371,13 @@ public class HikCallbackServiceImpl implements HikCallbackService {
         HikCarEquipmentUtil.sendCarLedMsgDefaultConfig(equipmentDTO.getBindIndexCode(), carNo + (equipmentDTO.getSign() == HikDeviceConstant.ENTER_THE_DOOR ? "入" : "出"));
 
         //发送日志
+        log.info("InAndOutLog--->personId="+personId+"card-->"+(card == null ? "" : card.getCardNumber())+"carNo--->"+carNo);
         LogUtil.sendLog(new InAndOutLog(personId, card == null ? "" : card.getCardNumber(), equipmentDTO.getIp(),
                 LogConstant.DEVICE_TO_LOG_PASS_IN_AND_OUT.get(equipmentDTO.getSign()), carNo));
+
+//        //发送日志
+//        LogUtil.sendLog(new InAndOutLog(personId, card == null ? "" : card.getCardNumber(), equipmentDTO.getIp(),
+//                LogConstant.DEVICE_TO_LOG_PASS_IN_AND_OUT.get(equipmentDTO.getSign()), card == null ? "" : card.getCardNo()));
     }
 
 

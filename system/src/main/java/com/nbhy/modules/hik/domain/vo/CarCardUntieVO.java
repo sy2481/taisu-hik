@@ -22,11 +22,11 @@ public class CarCardUntieVO {
     @ApiModelProperty("车卡卡号")
     private String cardNumber;
 
-//    @ApiModelProperty("一般情况下传输人员唯一标识，当卡片类型为2的时候传输工单号")
-//    private String cardNo;
-//
-//    @NotBlank
-//    @ApiModelProperty("卡片类型:1代表内部车卡，2代表外部员工车卡")
-//    private Integer cardType;
+    @ApiModelProperty("一般情况下传输人员唯一标识，当卡片类型为2的时候传输工单号")
+    private String cardNo;
+
+
+    @ApiModelProperty("卡片类型:1代表内部车卡，2代表外部员工车卡")
+    private Integer cardType;
 
 }
