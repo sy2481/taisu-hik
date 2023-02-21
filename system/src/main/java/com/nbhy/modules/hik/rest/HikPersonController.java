@@ -51,6 +51,47 @@ public class HikPersonController {
         return  CommonResult.success(null,"创建海康人员成功");
     }
 
+    @PostMapping("/sysUser")
+    @Log(value = "下发海康人员")
+    @ApiOperation("下发海康人员")
+    @AnonymousAccess
+    public CommonResult createSysUser(@RequestBody @Validated PersonVO personVO){
+        //如果为外部员工
+        if(HikPersonConstant.VENDOR_EMPLOYEES == personVO.getPersonType()){
+            if(StringUtils.isEmpty(personVO.getOrderSn())){
+                return CommonResult.failed("厂商编号必传");
+            }
+        }
+        try {
+            hikPersonService.createPersonSysUser(personVO);
+        }catch (HikException e){
+            log.error("下发海康人员失败>>>>>{}",e);
+            return CommonResult.failed("下发人员失败，请重新尝试");
+        }
+        return  CommonResult.success(null,"创建海康人员成功");
+    }
+
+    @PostMapping("/manfactory")
+    @Log(value = "下发海康人员")
+    @ApiOperation("下发海康人员")
+    @AnonymousAccess
+    public CommonResult createManFactory(@RequestBody @Validated PersonVO personVO){
+        //如果为外部员工
+        if(HikPersonConstant.VENDOR_EMPLOYEES == personVO.getPersonType()){
+            if(StringUtils.isEmpty(personVO.getOrderSn())){
+                return CommonResult.failed("厂商编号必传");
+            }
+        }
+        try {
+            hikPersonService.createPersonManFactory(personVO);
+        }catch (HikException e){
+            log.error("下发海康人员失败>>>>>{}",e);
+            return CommonResult.failed("下发人员失败，请重新尝试");
+        }
+        return  CommonResult.success(null,"创建海康人员成功");
+    }
+
+
     @PostMapping("/onlyFace")
     @Log(value = "下发海康人员")
     @ApiOperation("下发海康人员")
@@ -98,6 +139,15 @@ public class HikPersonController {
     @Log(value = "删除海康人员")
     public CommonResult deleteById(@PathVariable("personId") String personId){
         hikPersonService.deleteById(personId);
+        return  CommonResult.success(null,"删除海康人员成功");
+    }
+
+    @PostMapping("/deleteFace/{personId}")
+    @ApiOperation("删除海康人员")
+    @AnonymousAccess
+    @Log(value = "删除海康人员")
+    public CommonResult deleteFaceById(@PathVariable("personId") String personId){
+        hikPersonService.deleteFaceById(personId);
         return  CommonResult.success(null,"删除海康人员成功");
     }
 
@@ -167,6 +217,8 @@ public class HikPersonController {
     }
 
 
+
+
     @PostMapping("/issue/auth")
     @ApiOperation("下发海康权限")
     @AnonymousAccess
@@ -174,6 +226,16 @@ public class HikPersonController {
     public CommonResult issueAuth(@RequestBody @Validated PersonAuthVO personAuthVO){
         log.info("下发权限");
         hikPersonService.issueAuth(personAuthVO);
+        return  CommonResult.success(null,"更新海康權限");
+    }
+
+    @PostMapping("/issue/auth/SysUser")
+    @ApiOperation("下发海康权限")
+    @AnonymousAccess
+    @Log(value = "下发海康权限")
+    public CommonResult issueAuthSysUser(@RequestBody @Validated PersonAuthVO personAuthVO){
+        log.info("下发权限");
+        hikPersonService.issueAuthSysUser(personAuthVO);
         return  CommonResult.success(null,"更新海康權限");
     }
 

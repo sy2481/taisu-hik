@@ -1,14 +1,11 @@
 package com.nbhy.modules.plc.client;
 
-import cn.hutool.core.util.StrUtil;
 import com.nbhy.modules.hik.util.CrcUtils;
 import com.nbhy.modules.plc.constant.PlcCommandConstant;
-import io.swagger.models.auth.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 
@@ -21,7 +18,7 @@ import static java.lang.Thread.sleep;
  * @date 2018/07/15
  * @since 0.1.0
  */
-public class PlcSocket {
+public class TestPlcSocket {
     public enum CODE_TYPE {
         ASCII, //普通文本发送
         HEX    //十六进制发送
@@ -66,23 +63,16 @@ public class PlcSocket {
     /**
      * logger
      */
-    private static Logger logger = LoggerFactory.getLogger(PlcSocket.class);
+    private static Logger logger = LoggerFactory.getLogger(TestPlcSocket.class);
 
-    public PlcSocket(String ip, int port, int dataLength, String codeType) {
+    public TestPlcSocket(String ip, int port, int dataLength, String codeType) {
         this.ip = ip;
         this.port = port;
         this.dataLength = dataLength;
         this.codeType = codeType;
 
         try {
-            Integer bindPort = changeIPToBindPort(ip);
-            //修改方法 替换socket绑定端口
-            socket = new Socket();
-            socket.setSoLinger(true, 0);
-//            socket.setReuseAddress(true);
-            socket.bind(new InetSocketAddress(bindPort));
-            socket.connect(new InetSocketAddress(ip, port));
-            //socket = new Socket(ip, port);
+            socket = new Socket(ip, port);
             socket.setKeepAlive(true);
         } catch (Exception e) {
             logger.error("socket连接失败", ip + "--->" + port);
@@ -224,17 +214,17 @@ public class PlcSocket {
 
 
     public static void sentMessage(String ip, String index) {
-        logger.info("ip----->" + ip);
+        logger.info("ip----->"+ip);
         if (ip != null && (ip.equals("") || (ip.equals("127.0.0.1")))) {
             return;
         }
         if (!index.equals("")) {
-            PlcSocket plc = new PlcSocket(ip, 6000, 0, PlcSocket.CODE_TYPE.HEX.name());
+            TestPlcSocket plc = new TestPlcSocket(ip, 6000, 0, TestPlcSocket.CODE_TYPE.HEX.name());
             // byte[] bytes = CrcUtils.hexStringToByte(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
             plc.sendComm(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
 //        plc.sendComm("02FF0A0000000000204D010000");
             try {
-                Thread.sleep(400);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -242,14 +232,14 @@ public class PlcSocket {
             //byte[] bytes1 = CrcUtils.hexStringToByte(String.format(PlcCommandConstant.OPEN_DOOR_COMMAND, index));
             plc.sendComm(String.format(PlcCommandConstant.OPEN_DOOR_COMMAND, index));
             try {
-                Thread.sleep(400);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 //        plc.sendComm("02FF0A0000000000204D010000");
             plc.sendComm(String.format(PlcCommandConstant.CLOSE_DOOR_COMMAND, index));
             try {
-                Thread.sleep(400);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -259,12 +249,7 @@ public class PlcSocket {
     }
 
 
-    public static Integer changeIPToBindPort(String ip) {
-        String changePortString = ip.replace("0.", "").replace(".", "").substring(6);
-        return Integer.parseInt(changePortString);
-    }
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws  Exception {
 //        PlcSocket plc = new PlcSocket("192.168.70.152", 000, 0, CODE_TYPE.HEX.name());
 //        System.out.println(plc.sendComm("03FF0A0000000000204D01000000"));
 //
@@ -285,10 +270,18 @@ public class PlcSocket {
 //        }catch (Exception e){
 //
 //        }
-        PlcSocket plc = new PlcSocket("192.168.70.152", 6000, 0, CODE_TYPE.HEX.name());
-        System.out.println(plc.sendComm("02FF0A0002000000204D010000"));
-        System.out.println(plc.sendComm("02FF0A0002000000204D010010"));
-        System.out.println(plc.sendComm("02FF0A0002000000204D010000"));
+
+        // System.out.println(plc.sendComm("02FF0A0002000000204D010000"));
+        //        System.out.println(plc.sendComm("02FF0A0002000000204D010010"));
+        //        System.out.println(plc.sendComm("02FF0A0002000000204D010000"));
+
+        //02FF0A00%s0000204D010000
+        TestPlcSocket plc=new TestPlcSocket("192.168.110.151",6000,0, CODE_TYPE.HEX.name());
+        System.out.println(plc.sendComm("02FF0A00BE0F0000204D010010"));
+        Thread.sleep(400);
+        System.out.println(plc.sendComm("02FF0A00BF0F0000204D010010"));
+        Thread.sleep(400);
+        System.out.println(plc.sendComm("02FF0A00BF0F0000204D010000"));
         plc.close();
     }
 }

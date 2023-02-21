@@ -8,15 +8,17 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Iterator;
 import java.util.Scanner;
+import java.util.Set;
 
 @Slf4j
 public class Alarm {
 
     static HCNetSDK hCNetSDK = null;
-    static int[] lUserID = new int[]{0, 0, 0, 0, 0};//用户句柄 实现对设备登录
-    static int[] lAlarmHandle = new int[]{-1, -1, -1, -1, -1};//报警布防句柄
-    static int[] lAlarmHandle_V50 = new int[]{-1, -1, -1, -1, -1}; //v50报警布防句柄
+    static int[] lUserID = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};//用户句柄 实现对设备登录
+    static int[] lAlarmHandle = new int[]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};//报警布防句柄
+    static int[] lAlarmHandle_V50 = new int[]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,}; //v50报警布防句柄
     static int lListenHandle = -1;//报警监听句柄
     static FMSGCallBack_V31 fMSFCallBack_V31 = null;
 
@@ -125,7 +127,8 @@ public class Alarm {
 //        m_strLoginInfo.byLoginMode=1;  //ISAPI登录
         m_strLoginInfo.write();
 
-        lUserID[i] = hCNetSDK.NET_DVR_Login_V40(m_strLoginInfo, m_strDeviceInfo);
+        lUserID[i] = SdkConfig.hCNetSDK.NET_DVR_Login_V40(m_strLoginInfo, m_strDeviceInfo);
+        SdkConfig.sdkInstance.put(ip, lUserID[i]);
         if (lUserID[i] == -1) {
             log.info("登录失败，错误码为" + hCNetSDK.NET_DVR_GetLastError());
             return;
@@ -180,13 +183,12 @@ public class Alarm {
             } else {
                 log.info("布防成功");
             }
-        }
-            else {
+        } else {
             log.info("设备已经布防，请先撤防！");
         }
-            return;
+        return;
 
-        }
+    }
 
 
     /**
@@ -215,23 +217,22 @@ public class Alarm {
 
             }
 
-            }else {
+        } else {
 
             System.out.println("设备已经布防，请先撤防！");
         }
         return;
 
-        }
-
-
+    }
 
 
     /**
      * 开启监听
-     * @param ip  监听IP
+     *
+     * @param ip   监听IP
      * @param port 监听端口
      */
-    public static void StartListen(String ip,short port) {
+    public static void StartListen(String ip, short port) {
         if (fMSFCallBack_V31 == null) {
             fMSFCallBack_V31 = new FMSGCallBack_V31();
         }
@@ -246,6 +247,7 @@ public class Alarm {
 
     /**
      * 设备注销
+     *
      * @param i
      */
     public static void Logout(int i) {
@@ -264,6 +266,24 @@ public class Alarm {
             System.out.println("注销成功");
         }
         hCNetSDK.NET_DVR_Cleanup();
+        return;
+    }
+
+    public static void Logout() {
+        if (SdkConfig.sdkInstance != null && SdkConfig.sdkInstance.size() > 0) {
+            Set<String> keySet = SdkConfig.sdkInstance.keySet();
+            Iterator<String> it = keySet.iterator();
+            while (it.hasNext()) {
+
+                String key = it.next();
+                Integer value = SdkConfig.sdkInstance.get(key);
+                if (hCNetSDK.NET_DVR_Logout(value)) {
+                    System.out.println("注销成功");
+                }
+                hCNetSDK.NET_DVR_Cleanup();
+            }
+
+        }
         return;
     }
 

@@ -65,7 +65,7 @@ public class HikCallBackController {
     @AnonymousAccess
     public void callback(@RequestBody JSONObject jsonObject){
 
-            log.info("收到的信息为>>>>>>>>>>>>>{}",jsonObject);
+            //log.info("收到的信息为>>>>>>>>>>>>>{}",jsonObject);
             if(CallBackConstant.ACCESS_CONTROL_EVENT_CALLBACK.equals(jsonObject.getJSONObject("params").getString("ability"))){
                 HikCallBack<EventData> hikCallBack = jsonObject.toJavaObject(new TypeReference<HikCallBack<EventData>>(){});
                 hikCallbackService.accessControlEvent(hikCallBack);

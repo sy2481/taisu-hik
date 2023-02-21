@@ -27,6 +27,12 @@ public interface HikCarService {
     void untieCar(CarUntieVO carUntieVO);
 
     /**
+     * 解绑車卡
+     * @param carUntieVO
+     */
+    void untieCard(CarUntieVO carUntieVO);
+
+    /**
      * 绑定车卡
      * @param carCardVO
      */

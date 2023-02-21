@@ -43,6 +43,7 @@ public interface HikEquipmentService {
      */
     Map<String, EquipmentDTO> getEquipments();
 
+    Map<String, EquipmentDTO> getSdkEquipments();
 
     /**
      * 硬件sdk加载

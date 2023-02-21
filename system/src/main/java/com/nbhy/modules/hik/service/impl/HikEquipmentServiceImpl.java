@@ -47,11 +47,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HikEquipmentServiceImpl implements HikEquipmentService  {
+public class HikEquipmentServiceImpl implements HikEquipmentService {
 
 
-    private static Map<String,EquipmentDTO> equipmentDTOMap = new ConcurrentHashMap<>();
-//    private  final PlcClient plcClient;
+    private static Map<String, EquipmentDTO> equipmentDTOMap = new ConcurrentHashMap<>();
+    private static Map<String, EquipmentDTO> sdkEquipmentDTOMap = new ConcurrentHashMap<>();
+
+    //    private  final PlcClient plcClient;
     @Autowired
     private PlcClient plcClient;
     private final ERPConfigConstant erpConfigConstant;
@@ -62,7 +64,7 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
     @Override
     public List<HikDeviceDTO> queryAll(Integer deviceType) {
         List<HikDeviceDTO> hikDeviceDTOS = new ArrayList<>();
-        if(deviceType == null || deviceType == HikDeviceConstant.FACE_DEVICE){
+        if (deviceType == null || deviceType == HikDeviceConstant.FACE_DEVICE) {
             int index = 1;
             int size = 500;
             while (true) {
@@ -80,7 +82,7 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
                     hikDeviceDTO.setPort(hikAcsDevEquipment.getPort());
                     hikDeviceDTOS.add(hikDeviceDTO);
                 }
-                if(acsDeviceHikEquipments.size() < size){
+                if (acsDeviceHikEquipments.size() < size) {
                     break;
                 }
                 index++;
@@ -97,9 +99,9 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
 //            }
         }
 
-        if(deviceType == null || deviceType == HikDeviceConstant.CAR_DEVICE){
+        if (deviceType == null || deviceType == HikDeviceConstant.CAR_DEVICE) {
             List<CarEquipment> carEquipments = HikEquipmentUtil.queryAllCarChannel();
-            if(CollectionUtil.isNotEmpty(carEquipments)){
+            if (CollectionUtil.isNotEmpty(carEquipments)) {
                 for (CarEquipment carEquipment : carEquipments) {
                     HikDeviceDTO hikDeviceDTO = new HikDeviceDTO();
                     hikDeviceDTO.setDeviceName(carEquipment.getRoadwayName());
@@ -123,15 +125,20 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
     @PostConstruct
     public void syncServiceDevice() {
         log.info("profiles++++" + profiles);
-        if("dev".equals(profiles)){
+        if ("dev".equals(profiles)) {
             return;
         }
         String result = EquipmentUtil.queryEquipment();
         JSONObject jsonObject = JSON.parseObject(result);
         List<EquipmentDTO> equipmentDTOS = jsonObject.getJSONArray("data").toJavaList(EquipmentDTO.class);
+
+        equipmentDTOS.stream().forEach(equipmentDTO -> {
+            sdkEquipmentDTOMap.put(equipmentDTO.getIp(), equipmentDTO);
+        });
+
         equipmentDTOS.stream().forEach(equipmentDTO -> {
             log.info("equipmentDTO111111" + JSON.toJSONString(equipmentDTO));
-            equipmentDTOMap.put(equipmentDTO.getIndexCode(),equipmentDTO);
+            equipmentDTOMap.put(equipmentDTO.getIndexCode(), equipmentDTO);
 //            if(!"192.168.70.152".equals(equipmentDTO.getPlcIp())){
 //                log.info("2111111111");
 //                if(StringUtils.isNotEmpty(equipmentDTO.getPlcIp()) && equipmentDTO.getPlcPort() != null
@@ -180,13 +187,15 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
 //                        } catch (InterruptedException e) {
 //                            e.printStackTrace();
 //                        }
-                        //下发空打底
+            //下发空打底
 //                        channelFuture.channel().writeAndFlush(Unpooled.copiedBuffer(SubtitleMachineUtil.getCommand(" ")));
 //                    }
 //                }
 //            }
 
         });
+
+        syncsdk();
     }
 
     @Override
@@ -201,49 +210,113 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
         return equipmentDTOMap;
     }
 
+    @Override
+    public Map<String, EquipmentDTO> getSdkEquipments() {
+        return sdkEquipmentDTOMap;
+    }
 
-    static HCNetSDK hCNetSDK = null;
-    static FMSGCallBack_V31 fMSFCallBack_V31 = null;
 
+//    static HCNetSDK hCNetSDK = null;
+//    static FMSGCallBack_V31 fMSFCallBack_V31 = null;
+
+
+//    @Override
+//    @PostConstruct
+//    public void syncsdk() {
+//        if (hCNetSDK == null) {
+//            if (!CreateSDKInstance()) {
+//                log.error("Load SDK fail");
+//                throw new HikException("加载sdk失败");
+//            }
+//        }
+//        /**初始化*/
+//        hCNetSDK.NET_DVR_Init();
+//        /**加载日志*/
+//        hCNetSDK.NET_DVR_SetLogToFile(3, "../sdklog", false);
+//        //设置报警回调函数
+//        if (fMSFCallBack_V31 == null) {
+//            fMSFCallBack_V31 = new FMSGCallBack_V31();
+//            Pointer pUser = null;
+//            if (!hCNetSDK.NET_DVR_SetDVRMessageCallBack_V31(fMSFCallBack_V31, pUser)) {
+//                log.info("设置回调函数失败!");
+//                return;
+//            } else {
+//                log.info("设置回调函数成功!");
+//            }
+//        }
+//        /** 设备上传的报警信息是COMM_VCA_ALARM(0x4993)类型，
+//         在SDK初始化之后增加调用NET_DVR_SetSDKLocalCfg(enumType为NET_DVR_LOCAL_CFG_TYPE_GENERAL)设置通用参数NET_DVR_LOCAL_GENERAL_CFG的byAlarmJsonPictureSeparate为1，
+//         将Json数据和图片数据分离上传，这样设置之后，报警布防回调函数里面接收到的报警信息类型为COMM_ISAPI_ALARM(0x6009)，
+//         报警信息结构体为NET_DVR_ALARM_ISAPI_INFO（与设备无关，SDK封装的数据结构），更便于解析。*/
+//        HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG struNET_DVR_LOCAL_GENERAL_CFG = new HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG();
+//        struNET_DVR_LOCAL_GENERAL_CFG.byAlarmJsonPictureSeparate = 1;   //设置JSON透传报警数据和图片分离
+//        struNET_DVR_LOCAL_GENERAL_CFG.write();
+//        Pointer pStrNET_DVR_LOCAL_GENERAL_CFG = struNET_DVR_LOCAL_GENERAL_CFG.getPointer();
+//        hCNetSDK.NET_DVR_SetSDKLocalCfg(17, pStrNET_DVR_LOCAL_GENERAL_CFG);
+//        for (String s : equipmentDTOMap.keySet()) {
+//            EquipmentDTO equipmentDTO = equipmentDTOMap.get(s);
+//            if (equipmentDTO.getDeviceType() == 1) {
+//                Alarm.Login_V40(0, equipmentDTO.getIp(), (short) 8000, "admin", "zaq12wsx");
+//                Alarm.SetAlarm(0);
+//            }
+//        }
+//
+////        while (true) {
+////            //这里加入控制台输入控制，是为了保持连接状态，当输入Y表示布防结束
+//////            System.out.print("请选择是否撤出布防(Y/N)：");
+////            Scanner input = new Scanner(System.in);
+////            String str = input.next();
+////            if (str.equals("Y")) {
+////                break;
+////            }
+////        }
+////        Alarm.Logout(0);
+//    }
 
     @Override
-//    @PostConstruct
+    //@PostConstruct
     public void syncsdk() {
-        if (hCNetSDK == null) {
+        log.info("loadSDK");
+        if (SdkConfig.hCNetSDK == null) {
             if (!CreateSDKInstance()) {
                 log.error("Load SDK fail");
                 throw new HikException("加载sdk失败");
             }
         }
         /**初始化*/
-        hCNetSDK.NET_DVR_Init();
+        SdkConfig.hCNetSDK.NET_DVR_Init();
         /**加载日志*/
-        hCNetSDK.NET_DVR_SetLogToFile(3, "../sdklog", false);
+        SdkConfig.hCNetSDK.NET_DVR_SetLogToFile(3, "../sdklog", false);
         //设置报警回调函数
-        if (fMSFCallBack_V31 == null) {
-            fMSFCallBack_V31 = new FMSGCallBack_V31();
-            Pointer pUser = null;
-            if (!hCNetSDK.NET_DVR_SetDVRMessageCallBack_V31(fMSFCallBack_V31, pUser)) {
-                log.info("设置回调函数失败!");
-                return;
-            } else {
-                log.info("设置回调函数成功!");
-            }
-        }
+//        if (fMSFCallBack_V31 == null) {
+//            fMSFCallBack_V31 = new FMSGCallBack_V31();
+//            Pointer pUser = null;
+//            if (!hCNetSDK.NET_DVR_SetDVRMessageCallBack_V31(fMSFCallBack_V31, pUser)) {
+//                log.info("设置回调函数失败!");
+//                return;
+//            } else {
+//                log.info("设置回调函数成功!");
+//            }
+//        }
         /** 设备上传的报警信息是COMM_VCA_ALARM(0x4993)类型，
          在SDK初始化之后增加调用NET_DVR_SetSDKLocalCfg(enumType为NET_DVR_LOCAL_CFG_TYPE_GENERAL)设置通用参数NET_DVR_LOCAL_GENERAL_CFG的byAlarmJsonPictureSeparate为1，
          将Json数据和图片数据分离上传，这样设置之后，报警布防回调函数里面接收到的报警信息类型为COMM_ISAPI_ALARM(0x6009)，
          报警信息结构体为NET_DVR_ALARM_ISAPI_INFO（与设备无关，SDK封装的数据结构），更便于解析。*/
-        HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG struNET_DVR_LOCAL_GENERAL_CFG = new HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG();
-        struNET_DVR_LOCAL_GENERAL_CFG.byAlarmJsonPictureSeparate = 1;   //设置JSON透传报警数据和图片分离
-        struNET_DVR_LOCAL_GENERAL_CFG.write();
-        Pointer pStrNET_DVR_LOCAL_GENERAL_CFG = struNET_DVR_LOCAL_GENERAL_CFG.getPointer();
-        hCNetSDK.NET_DVR_SetSDKLocalCfg(17, pStrNET_DVR_LOCAL_GENERAL_CFG);
+//        HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG struNET_DVR_LOCAL_GENERAL_CFG = new HCNetSDK.NET_DVR_LOCAL_GENERAL_CFG();
+//        struNET_DVR_LOCAL_GENERAL_CFG.byAlarmJsonPictureSeparate = 1;   //设置JSON透传报警数据和图片分离
+//        struNET_DVR_LOCAL_GENERAL_CFG.write();
+//        Pointer pStrNET_DVR_LOCAL_GENERAL_CFG = struNET_DVR_LOCAL_GENERAL_CFG.getPointer();
+//        hCNetSDK.NET_DVR_SetSDKLocalCfg(17, pStrNET_DVR_LOCAL_GENERAL_CFG);
+        log.info("loadSDK1");
+        int i=0;
+        log.info("equipmentDTOMap.size"+equipmentDTOMap.size());
         for (String s : equipmentDTOMap.keySet()) {
             EquipmentDTO equipmentDTO = equipmentDTOMap.get(s);
-            if(equipmentDTO.getDeviceType() == 1){
-                Alarm.Login_V40(0, equipmentDTO.getIp(), (short) 8000, "admin", "zaq12wsx");
-                Alarm.SetAlarm(0);
+            if(!equipmentDTO.getIp().equals("192.168.70.211")){
+                log.info(" equipmentDTO.getIp()-->"+ equipmentDTO.getIp());
+                Alarm.Login_V40(i, equipmentDTO.getIp(), (short) 8000, "admin", "zaq12wsx");
+                //Alarm.SetAlarm(0);
+                i++;
             }
         }
 
@@ -274,18 +347,39 @@ public class HikEquipmentServiceImpl implements HikEquipmentService  {
      *
      * @return
      */
+//    private static boolean CreateSDKInstance() {
+//        if (hCNetSDK == null) {
+//            synchronized (HCNetSDK.class) {
+//                String strDllPath = "";
+//                try {
+//                    if (osSelect.isWindows())
+//                        //win系统加载库路径
+//                        strDllPath = System.getProperty("user.dir") + "\\lib\\HCNetSDK.dll";
+//                    else if (osSelect.isLinux())
+//                        //Linux系统加载库路径
+//                        strDllPath = System.getProperty("user.dir") + "/lib/libhcnetsdk.so";
+//                    hCNetSDK = (HCNetSDK) Native.loadLibrary(strDllPath, HCNetSDK.class);
+//                } catch (Exception ex) {
+//                    System.out.println("loadLibrary: " + strDllPath + " Error: " + ex.getMessage());
+//                    return false;
+//                }
+//            }
+//        }
+//        return true;
+//    }
+
     private static boolean CreateSDKInstance() {
-        if (hCNetSDK == null) {
+        if (SdkConfig.hCNetSDK == null) {
             synchronized (HCNetSDK.class) {
                 String strDllPath = "";
                 try {
-                    if (osSelect.isWindows())
+                    if (osSelect.isWindows()){
                         //win系统加载库路径
-                        strDllPath = System.getProperty("user.dir") + "\\lib\\HCNetSDK.dll";
-                    else if (osSelect.isLinux())
+                        strDllPath = System.getProperty("user.dir") + "\\lib\\HCNetSDK.dll";}
+                    else if (osSelect.isLinux()){
                         //Linux系统加载库路径
-                        strDllPath = System.getProperty("user.dir") + "/lib/libhcnetsdk.so";
-                    hCNetSDK = (HCNetSDK) Native.loadLibrary(strDllPath, HCNetSDK.class);
+                        strDllPath = System.getProperty("user.dir") + "/lib/libhcnetsdk.so";}
+                    SdkConfig.hCNetSDK = (HCNetSDK) Native.loadLibrary(strDllPath, HCNetSDK.class);
                 } catch (Exception ex) {
                     System.out.println("loadLibrary: " + strDllPath + " Error: " + ex.getMessage());
                     return false;

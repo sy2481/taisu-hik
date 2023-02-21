@@ -119,6 +119,7 @@ public class HikCarServiceImpl implements HikCarService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void untieCar(CarUntieVO carUntieVO) {
+        log.info("開始解除綁帶車卡");
         Car car = hikCarMapper.selectById(carUntieVO.getCarNumber());
         if(car == null){
             log.info("车辆不存在");
@@ -126,6 +127,23 @@ public class HikCarServiceImpl implements HikCarService {
         }
 
         hikCarMapper.deleteById(car.getCarNumber());
+
+        hikCarAuthMapper.delete(Wrappers.<HikCarAuth>lambdaUpdate()
+                .eq(HikCarAuth::getCarId, carUntieVO.getCarNumber())
+                .eq(HikCarAuth::getCarType, CarAuthConstant.CAR_NUMBER));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void untieCard(CarUntieVO carUntieVO) {
+        log.info("開始解除綁帶車卡");
+        Card card = hikCardMapper.selectById(carUntieVO.getCarNumber());
+        if(card == null){
+            log.info("車卡不存在");
+            return;
+        }
+
+        hikCarMapper.deleteById(card.getCardNumber());
 
         hikCarAuthMapper.delete(Wrappers.<HikCarAuth>lambdaUpdate()
                 .eq(HikCarAuth::getCarId, carUntieVO.getCarNumber())

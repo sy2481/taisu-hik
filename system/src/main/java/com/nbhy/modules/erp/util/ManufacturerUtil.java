@@ -41,4 +41,24 @@ public class ManufacturerUtil {
              return result.getString("msg");
          }
     }
+
+    /**
+     * 根据车牌获取大小车
+     * @param plateNum
+     * @return
+     */
+    public static String getCarType(String plateNum){
+        HttpRequest request = HttpUtil.createGet(ERPConfigConstant.HOST + "/api/inOut/getCarType");
+        request.form("plateNo",plateNum);
+        BaseHttpUtil.setTimeOut(request);
+        HttpResponse execute = request.execute();
+        JSONObject result = JSONObject.parseObject(execute.body());
+        log.info("工单判断收到的信息为>>>>>>{}",execute.body());
+        if(result.getIntValue("code") == 0){
+            return null;
+        }else{
+            return result.getString("msg");
+        }
+    }
+
 }

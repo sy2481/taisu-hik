@@ -38,6 +38,11 @@ public class HikDeviceConstant {
 
 
     /**
+     * pp厂核卡室外人脸设备
+     */
+    public static final int PP_FACE_DEVICE = 3;
+
+    /**
      * 1-进 2-出
      * 进门
      */

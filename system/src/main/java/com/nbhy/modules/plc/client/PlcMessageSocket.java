@@ -21,6 +21,8 @@ import static java.lang.Thread.sleep;
  * @create : 2022/5/30 10:09
  */
 public class PlcMessageSocket {
+
+
 	public enum CODE_TYPE {
 		ASCII, //普通文本发送
 		HEX    //十六进制发送
@@ -50,7 +52,7 @@ public class PlcMessageSocket {
 	/**
 	 * 超时时间
 	 */
-	private static final int DEFAULT_RANGE_TIME_OUT = 1000 * 60;
+	private static final int DEFAULT_RANGE_TIME_OUT = 1000 * 5;
 
 	/**
 	 * socket
@@ -65,7 +67,7 @@ public class PlcMessageSocket {
 	/**
 	 * logger
 	 */
-	private final Logger logger = LoggerFactory.getLogger(PlcSocket.class);
+	private final Logger logger = LoggerFactory.getLogger(PlcMessageSocket.class);
 
 	public PlcMessageSocket(String ip, int port, int dataLength, String codeType) {
 		this.ip = ip;
@@ -274,6 +276,7 @@ public class PlcMessageSocket {
 		if (ip != null && (ip.equals("") || (ip.equals("127.0.0.1")))) {
 			return;
 		}
+
 		PlcMessageSocket plc=new PlcMessageSocket(ip,6000,0,CODE_TYPE.HEX.name());
 		plc.sendCommLine();
 //		String message="中文 english";
@@ -285,7 +288,7 @@ public class PlcMessageSocket {
 				continue;
 			}
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(500);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

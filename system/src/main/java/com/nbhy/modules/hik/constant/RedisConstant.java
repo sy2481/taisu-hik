@@ -93,7 +93,7 @@ public class RedisConstant {
     /**
      * 车辆进出key的有效期
      */
-    public static final int IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD = 60*10;
+    public static final int IN_AND_OUT_CAR_KEY_VALIDITY_PERIOD = 60*15;
 
     /**
      * 进出车牌

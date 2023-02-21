@@ -32,4 +32,6 @@ public class PersonAuthVO {
 
     private Integer personType;
 
+    private String orderSn;
+
 }

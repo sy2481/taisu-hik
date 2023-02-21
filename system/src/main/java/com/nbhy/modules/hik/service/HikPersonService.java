@@ -21,6 +21,11 @@ public interface HikPersonService {
      * @param personVO
      */
     void createPerson(PersonVO personVO);
+
+    void createPersonSysUser(PersonVO personVO);
+
+    void createPersonManFactory(PersonVO personVO);
+
     void createPersonOnlyFace(PersonVO personVO);
     /**
      * 重新海康下发人员
@@ -33,6 +38,12 @@ public interface HikPersonService {
      * @param personId
      */
     void deleteById(String personId);
+
+    /**
+     * 删除海康人员人脸
+     * @param personId
+     */
+    void deleteFaceById(String personId);
 
     /**
      * 批量删除海康人员
@@ -65,7 +76,7 @@ public interface HikPersonService {
      * @param personAuthVO
      */
     void issueAuth(PersonAuthVO personAuthVO);
-
+    void issueAuthSysUser(PersonAuthVO personAuthVO);
 
     /**
      * 定时删除海康厂商人员

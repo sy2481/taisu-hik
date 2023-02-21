@@ -2,11 +2,13 @@ package com.nbhy;
 
 import com.nbhy.annotation.RepeatSubmit;
 import com.nbhy.annotation.rest.AnonymousGetMapping;
+import com.nbhy.modules.hik.util.Alarm;
 import com.nbhy.modules.plc.client.PlcClient;
 import com.nbhy.utils.SpringContextHolder;
 import io.netty.channel.ChannelFuture;
 import io.swagger.annotations.Api;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -14,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -59,5 +62,13 @@ public class AppRun {
     @AnonymousGetMapping("/")
     public String index() {
         return "Backend service started successfully";
+    }
+
+    @Configuration
+    public class ApplicationService implements DisposableBean {
+        @Override
+        public void destroy() throws Exception{
+            Alarm.Logout();
+        }
     }
 }

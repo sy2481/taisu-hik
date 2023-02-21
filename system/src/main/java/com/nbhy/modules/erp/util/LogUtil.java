@@ -37,4 +37,19 @@ public class LogUtil {
         log.info("发送日志收到信息>>>>>>{}",execute.body());
         return result.getIntValue("code") == 0;
     }
+
+    /**
+     * 是否能进出
+     * @param inAndOutLog 进出记录
+     * @return
+     */
+    public static boolean sendLogForShipment(InAndOutLog inAndOutLog){
+        HttpRequest request = HttpUtil.createGet(ERPConfigConstant.HOST + "/api/log/inOutLogInsertForShipment");
+        request.form(BeanUtil.beanToMap(inAndOutLog,false,true));
+        BaseHttpUtil.setTimeOut(request);
+        HttpResponse execute = request.execute();
+        JSONObject result = JSONObject.parseObject(execute.body());
+        log.info("发送日志收到信息>>>>>>{}",execute.body());
+        return result.getIntValue("code") == 0;
+    }
 }
